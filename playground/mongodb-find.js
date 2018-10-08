@@ -3,11 +3,13 @@ const {
   ObjectID
 } = require('mongodb');
 
-MongoClient.connect('mongodb://localhost:27017/TodoApp', (error, db) => {
+MongoClient.connect('mongodb://localhost:27017/TodoApp', { useNewUrlParser: true }, (error, client) => {
   if (error) {
     return console.log('Unable to connect to mongodb server.');
   }
   console.log('Connected to mongodb server');
+
+  const db = client.db('TodoApp');
 
   // db.collection('Todos').find({
   //   _id: new ObjectID('5bbb0c0548acff4562ea5fd7')
@@ -32,5 +34,6 @@ MongoClient.connect('mongodb://localhost:27017/TodoApp', (error, db) => {
   }, (err) => {
     console.log('Unable to fetch todos');
   });  
-  //db.close();
+
+  //client.close();
 });
