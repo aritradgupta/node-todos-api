@@ -16,6 +16,7 @@ describe('POST /todos', () => {
 
     request(app)
     .post('/todos')
+    .set('x-auth', users[0].tokens[0].token)
     .send({text})
     .expect(200)
     .expect((res) => {
@@ -37,6 +38,7 @@ describe('POST /todos', () => {
   it('should not create todo with invalid body data', (done) => {
     request(app)
     .post('/todos')
+    .set('x-auth', users[0].tokens[0].token)
     .send({})
     .expect(400)
     .end((err, res) => {
@@ -56,9 +58,10 @@ describe('GET /todos', () => {
   it('should get all todos', (done) => {
     request(app)
     .get('/todos')
+    .set('x-auth', users[0].tokens[0].token)
     .expect(200)
     .expect((res) => {
-      expect(res.body.todos.length).toBe(2);
+      expect(res.body.todos.length).toBe(1);
     })
     .end(done);
   });
@@ -68,6 +71,7 @@ describe('GET /todos/:id', () => {
   it('should return todo doc', (done) => {
     request(app)
     .get(`/todos/${todos[0]._id.toHexString()}`)
+    .set('x-auth', users[0].tokens[0].token)
     .expect(200)
     .expect((res) => {
       expect(res.body.todo.text).toBe(todos[0].text);
@@ -75,10 +79,19 @@ describe('GET /todos/:id', () => {
     .end(done);
   });
 
+  it('should not return todo doc created by different user', (done) => {
+    request(app)
+    .get(`/todos/${todos[1]._id.toHexString()}`)
+    .set('x-auth', users[0].tokens[0].token)
+    .expect(400)
+    .end(done);
+  });
+
   it('should return 400 if todo not found', (done) => {
     var hexId = new ObjectId().toHexString();
     request(app)
     .get(`/todos/${hexId}`)
+    .set('x-auth', users[0].tokens[0].token)
     .expect(400)
     .end(done);
   });
@@ -87,6 +100,7 @@ describe('GET /todos/:id', () => {
     var hexId = new ObjectId().toHexString();
     request(app)
     .get('/todos/123')
+    .set('x-auth', users[0].tokens[0].token)
     .expect(400)
     .end(done);
   });
@@ -97,6 +111,7 @@ describe('DELETE /todos/:id', () => {
     var hexId = todos[0]._id.toHexString();
     request(app)
     .delete(`/todos/${hexId}`)
+    .set('x-auth', users[0].tokens[0].token)
     .expect(200)
     .expect((res) => {
       expect(res.body.todo._id).toBe(hexId);
@@ -112,10 +127,28 @@ describe('DELETE /todos/:id', () => {
     });
   });
 
+  it('should not remove a todo created by different user', (done) => {
+    var hexId = todos[1]._id.toHexString();
+    request(app)
+    .delete(`/todos/${hexId}`)
+    .set('x-auth', users[0].tokens[0].token)
+    .expect(404)
+    .end((err, res) => {
+      if(err){
+        return done(err);
+      }
+      Todo.findById(hexId).then((todo) => {
+        expect(todo).toBeTruthy();
+        done();
+      }).catch((err) => done(err));
+    });
+  });
+
   it('should return 404 if todo not found', (done) => {
     var hexId = new ObjectId().toHexString();
     request(app)
     .delete(`/todos/${hexId}`)
+    .set('x-auth', users[0].tokens[0].token)
     .expect(404)
     .end(done);
   });
@@ -124,6 +157,7 @@ describe('DELETE /todos/:id', () => {
     var hexId = new ObjectId().toHexString();
     request(app)
     .delete('/todos/123')
+    .set('x-auth', users[0].tokens[0].token)
     .expect(404)
     .end(done);
   });
@@ -136,6 +170,7 @@ describe('PATCH /todos/:id', () => {
 
     request(app)
     .patch(`/todos/${hexId}`)
+    .set('x-auth', users[0].tokens[0].token) 
     .send({
       completed: true,
       text
@@ -149,12 +184,28 @@ describe('PATCH /todos/:id', () => {
     .end(done)
   });
 
-  it('should clear completedAt property when todo is not completed', (done) => {
+  it('should not update the todo created by different user', (done) => {
     var hexId = todos[1]._id.toHexString();
+    var text = 'Test text'
+
+    request(app)
+    .patch(`/todos/${hexId}`)
+    .set('x-auth', users[0].tokens[0].token) 
+    .send({
+      completed: true,
+      text
+    })
+    .expect(404)
+    .end(done)
+  });
+
+  it('should clear completedAt property when todo is not completed', (done) => {
+    var hexId = todos[0]._id.toHexString();
     var text = 'Test text!!!!!'
 
     request(app)
     .patch(`/todos/${hexId}`)
+    .set('x-auth', users[0].tokens[0].token)
     .send({
       completed: false,
       text
